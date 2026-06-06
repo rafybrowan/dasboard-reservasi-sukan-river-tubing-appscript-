@@ -72,6 +72,19 @@ function getVal(row, idx, fallback) {
 }
 
 /**
+ * Helper: safely get time value (format as HH:mm)
+ */
+function getTimeVal(row, idx, fallback) {
+  if (idx < 0 || idx >= row.length) return fallback;
+  var v = row[idx];
+  if (v === null || v === undefined || v === '') return fallback;
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'HH:mm');
+  }
+  return v;
+}
+
+/**
  * Fetch all reservation data from the spreadsheet
  */
 function getReservationData() {
@@ -113,7 +126,7 @@ function getReservationData() {
         metode: String(getVal(row, colMetode, '-')),
         status: String(getVal(row, colStatus, '-')),
         tanggal: String(getVal(row, colTanggal, '-')),
-        waktu: String(getVal(row, colWaktu, '-')),
+        waktu: String(getTimeVal(row, colWaktu, '-')),
         refId: String(getVal(row, colRefId, '-')),
         catatan: String(getVal(row, colCatatan, '-')),
         kodeReservasi: String(kode),
@@ -220,6 +233,41 @@ function confirmCheckin(kodeReservasi) {
       if (String(data[i][kodeCol]).trim().toLowerCase() === search) {
         sheet.getRange(i + 1, checkinCol + 1).setValue('Sudah Check-In');
         return { success: true, message: 'Check-in berhasil dikonfirmasi!' };
+      }
+    }
+
+    return { success: false, message: 'Kode reservasi tidak ditemukan.' };
+  } catch (e) {
+    return { success: false, message: 'Error: ' + e.message };
+  }
+}
+
+/**
+ * Cancel check-in: revert STATUS_CHECKIN to "Belum Check-In"
+ */
+function cancelCheckin(kodeReservasi) {
+  try {
+    var sheet = getSheet();
+    if (!sheet) return { success: false, message: 'Sheet tidak ditemukan.' };
+
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var kodeCol = findCol(headers, 'KODE RESERVASI');
+    var checkinCol = findCol(headers, 'STATUS_CHECKIN');
+
+    if (kodeCol === -1) {
+      return { success: false, message: 'Kolom KODE RESERVASI tidak ditemukan.' };
+    }
+    if (checkinCol === -1) {
+      return { success: false, message: 'Kolom STATUS_CHECKIN belum ada.' };
+    }
+
+    var search = String(kodeReservasi).trim().toLowerCase();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][kodeCol]).trim().toLowerCase() === search) {
+        sheet.getRange(i + 1, checkinCol + 1).setValue('Belum Check-In');
+        return { success: true, message: 'Check-in berhasil dibatalkan.' };
       }
     }
 

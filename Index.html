@@ -207,6 +207,9 @@
       <button class="btn btn-success" id="checkinBtn" onclick="confirmCheckin()">
         <i class="fas fa-check-circle"></i> Konfirmasi Check-In
       </button>
+      <button class="btn" id="cancelCheckinBtn" onclick="cancelCheckin()" style="background:linear-gradient(135deg,var(--red),#e11d48);color:#fff;display:none">
+        <i class="fas fa-undo"></i> Batalkan Check-In
+      </button>
       <button class="btn" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border)" 
               onclick="closeDetail()">
         <i class="fas fa-times"></i> Tutup
@@ -371,8 +374,13 @@
     badge.className = 'badge ' + (isSudah ? 'badge-green' : 'badge-yellow');
     badge.innerHTML = '<i class="fas fa-' + (isSudah?'check-circle':'clock') + '"></i> ' + (isSudah?'Sudah Check-In':'Belum Check-In');
 
-    checkinBtn.disabled = isSudah;
-    checkinBtn.style.opacity = isSudah ? '0.5' : '1';
+    // Toggle tombol check-in / batalkan
+    var cancelBtn = document.getElementById('cancelCheckinBtn');
+    checkinBtn.style.display = isSudah ? 'none' : 'inline-flex';
+    checkinBtn.disabled = false;
+    checkinBtn.style.opacity = '1';
+    checkinBtn.innerHTML = '<i class="fas fa-check-circle"></i> Konfirmasi Check-In';
+    cancelBtn.style.display = isSudah ? 'inline-flex' : 'none';
 
     const fields = [
       {icon:'fa-user',label:'Pengirim',val:r.pengirim},
@@ -415,12 +423,7 @@
         if(res.success){
           showToast(res.message,'success');
           loadDashboard();
-          // Update detail card badge
-          document.getElementById('detailCheckinBadge').className = 'badge badge-green';
-          document.getElementById('detailCheckinBadge').innerHTML = '<i class="fas fa-check-circle"></i> Sudah Check-In';
-          btn.disabled = true;
-          btn.innerHTML = '<i class="fas fa-check-circle"></i> Sudah Check-In';
-          btn.style.opacity = '0.5';
+          viewDetail(currentKode);
         } else {
           showToast(res.message,'error');
           btn.disabled = false;
@@ -428,11 +431,40 @@
         }
       })
       .withFailureHandler(function(err){
-        showToast('Error: ' + err.message,'error');
+        showToast('Error: ' + (err&&err.message?err.message:err),'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-circle"></i> Konfirmasi Check-In';
       })
       .confirmCheckin(currentKode);
+  }
+
+  // Cancel Check-In
+  function cancelCheckin(){
+    if(!currentKode) return;
+    if(!confirm('Batalkan check-in untuk kode: ' + currentKode + '?')) return;
+
+    const btn = document.getElementById('cancelCheckinBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Memproses...';
+
+    google.script.run
+      .withSuccessHandler(function(res){
+        if(res.success){
+          showToast(res.message,'success');
+          loadDashboard();
+          viewDetail(currentKode);
+        } else {
+          showToast(res.message,'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-undo"></i> Batalkan Check-In';
+        }
+      })
+      .withFailureHandler(function(err){
+        showToast('Error: ' + (err&&err.message?err.message:err),'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-undo"></i> Batalkan Check-In';
+      })
+      .cancelCheckin(currentKode);
   }
 
   // Init
